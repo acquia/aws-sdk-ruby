@@ -225,6 +225,11 @@
           "expected": "ValidationError",
           "matcher": "error",
           "state": "failure"
+        },
+        {
+          "expected": "Throttling",
+          "matcher": "error",
+          "state": "retry"
         }
       ]
     },
