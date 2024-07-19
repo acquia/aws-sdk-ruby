@@ -14,7 +14,7 @@ application.
   s.add_dependency('nokogiri', '> 1')
   s.add_dependency('json', '> 1.4')
   s.add_dependency('bigdecimal', '> 2')
-  s.add_dependency('rexml')
+  s.add_dependency('rexml', '~>3.2.7')
 
   s.files = [
     'ca-bundle.crt',
