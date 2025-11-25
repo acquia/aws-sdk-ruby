@@ -429,13 +429,16 @@ module AWS
               http_debug_output
             http.start
 
+            # Try to get IMDSv2 token first
+            token = get_imdsv2_token(http)
+
             # get the first/default instance profile name
             path = '/latest/meta-data/iam/security-credentials/'
-            profile_name = get(http, path).lines.map(&:strip).first
+            profile_name = get(http, path, token).lines.map(&:strip).first
 
             # get the session details from the instance profile name
             path << profile_name
-            session = JSON.parse(get(http, path))
+            session = JSON.parse(get(http, path, token))
 
             http.finish
 
@@ -460,15 +463,38 @@ module AWS
           end
         end
 
+        # Gets IMDSv2 token for secure metadata access
+        # @param [Net::HTTPSession] session
+        # @return [String, nil] Returns the token or nil if IMDSv2 is not available
+        def get_imdsv2_token(session)
+          begin
+            request = Net::HTTP::Put.new('/latest/api/token')
+            request['X-aws-ec2-metadata-token-ttl-seconds'] = '900'
+            response = session.request(request)
+            if response.code.to_i == 200
+              response.body
+            else
+              nil  # Fall back to IMDSv1
+            end
+          rescue => e
+            nil  # Fall back to IMDSv1 on any error
+          end
+        end
+
         # Makes an HTTP Get request with the given path.  If a non-200
         # response is received, then a FailedRequestError is raised.
         # a {FailedRequestError} is raised.
         # @param [Net::HTTPSession] session
         # @param [String] path
+        # @param [String, nil] token IMDSv2 token (optional)
         # @raise [FailedRequestError]
         # @return [String] Returns the http response body.
-        def get session, path
-          response = session.request(Net::HTTP::Get.new(path))
+        def get session, path, token = nil
+          request = Net::HTTP::Get.new(path)
+          if token
+            request['X-aws-ec2-metadata-token'] = token
+          end
+          response = session.request(request)
           if response.code.to_i == 200
             response.body
           else
